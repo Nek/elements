@@ -1,66 +1,56 @@
 // @ts-ignore
-import { ElementaryWebAudioRenderer as core } from '@elemaudio/core'
-import React, { useState, useRef } from 'react'
+import { OrbitControls } from '@react-three/drei'
+import { Canvas } from '@react-three/fiber'
+import React, { useState } from 'react'
 import { render } from 'react-dom'
-import { Canvas, useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
+import { Vector2 } from 'three'
 
-declare global {
-  interface Window {
-    webkitAudioContext: typeof AudioContext
-  }
+function profile(SEGMENTS: number) {
+  const step = 360 / SEGMENTS
+  const K1 = Math.random() * 3 + 1
+  const K2 = Math.random() + 0.1
+  const K3 = (Math.random() * 15 + 5) * 0.1
+
+  const f1 = (k: number, i: number) =>
+    Math.sin((k * (i * step) * Math.PI) / 180)
+
+  return Array(SEGMENTS)
+    .fill([])
+    .map((_, i) => f1(K1, i) * f1(K2, i) + f1(K3, i))
 }
 
-const initAudioCore = () => {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)()
-  async function main() {
-    let node = await core.initialize(ctx, {
-      numberOfInputs: 0,
-      numberOfOutputs: 1,
-      outputChannelCount: [2],
-    })
-
-    node.connect(ctx.destination)
-  }
-  main()
-  document.removeEventListener('click', initAudioCore)
-  document.removeEventListener('touchstart', initAudioCore)
+function makePoints2d(HEIGHT, SEGMENTS) {
+  return [
+    new Vector2(0, 0),
+    ...profile(SEGMENTS).map(
+      (x, y) => new Vector2(x - 2, (y * HEIGHT) / SEGMENTS),
+    ),
+    new Vector2(0, HEIGHT),
+  ]
 }
-document.addEventListener('click', initAudioCore)
-document.addEventListener('touchstart', initAudioCore)
-
-const renderAudio = (audio: core.Node) => {
-  core.render(audio, audio)
-}
-
-const k = 0.1
-console.log(
-  Array(36)
-    .fill(undefined)
-    .map((_, i) => Math.sin(((k * i * 10) / Math.PI) * 2)),
-)
 
 function App() {
-  const points = Array(36)
-    .fill(undefined)
-    .map((_, i) => Math.sin(((k * i * 10) / Math.PI) * 2))
-    .map((x, y) => new THREE.Vector3(x, y, 0))
-  const lineGeometry = new THREE.BufferGeometry().setFromPoints(points)
+  const SEGMENTS = 360
+  const HEIGHT = 10
+
+  const [points2d, setPoints2d] = useState(
+    makePoints2d(HEIGHT, SEGMENTS),
+  )
 
   return (
-    <Canvas>
+    <Canvas camera={{ position: [0, 0, -10] }}>
+      <OrbitControls autoRotate={true} autoRotateSpeed={-10} />
       <ambientLight />
       <pointLight position={[10, 10, 10]} />
-      <group position={[0, -2.5, -10]}>
-        <line_ geometry={lineGeometry}>
-          <lineBasicMaterial
-            attach="material"
-            color={'#9c88ff'}
-            linewidth={10}
-            linecap={'round'}
-            linejoin={'round'}
-          />
-        </line_>
+      <group position={[0, -5, 0]}>
+        <mesh
+          onDoubleClick={() =>
+            setPoints2d(makePoints2d(HEIGHT, SEGMENTS))
+          }
+        >
+          <latheGeometry args={[points2d, 72]} />
+          <meshStandardMaterial color={'hotpink'} />
+        </mesh>
       </group>
     </Canvas>
   )

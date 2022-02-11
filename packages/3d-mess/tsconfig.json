@@ -1,5 +1,4 @@
 {
-  "include": ["src", "types"],
   "compilerOptions": {
     "module": "esnext",
     "target": "esnext",
@@ -27,7 +26,5 @@
     "useDefineForClassFields": true,
     "declaration": true
   },
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["./**/*.ts"]
 }
