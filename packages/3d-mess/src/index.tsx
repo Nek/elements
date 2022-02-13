@@ -125,8 +125,8 @@ const vertexShader = `
 
           pos.y *= 1. + (cos((posXZlen + 0.25) * 3.1415926) * 0.25 + noise(vec2(0, time)) * 0.125 + noise(vec2(position.x + time, position.z + time)) * 0.5) * position.y; // flame height
 
-          pos.x += noise(vec2(time * 2., (position.y - time) * 4.0)) * hValue * 0.0312; // flame trembling
-          pos.z += noise(vec2((position.y - time) * 4.0, time * 2.)) * hValue * 0.0312; // flame trembling
+          pos.x += noise(vec2(time * 2., (position.y - time) * 4.0)) * hValue * 0.12; // flame trembling
+          pos.z += noise(vec2((position.y - time) * 4.0, time * 2.)) * hValue * 0.12; // flame trembling
 
           gl_Position = projectionMatrix * modelViewMatrix * vec4(pos,1.0);
         }
@@ -167,7 +167,7 @@ function profile(SEGMENTS: number) {
     .map((_, i) => f1(K1, i) * f1(K2, i) + f1(K3, i) + 0.2)
 }
 
-function makePoints2d(HEIGHT, SEGMENTS) {
+function makePoints2d(HEIGHT: number, SEGMENTS: number) {
   return [
     new Vector2(0, 0),
     ...profile(SEGMENTS).map((x, y) => new Vector2(x, (y * HEIGHT) / SEGMENTS)),
@@ -175,13 +175,20 @@ function makePoints2d(HEIGHT, SEGMENTS) {
   ]
 }
 
+  const HEIGHT = 5
+
 function Candle() {
   const refFront = useRef()
   const refBack = useRef()
+  const refLigh = useRef()
 
   useFrame((state) => {
-    refFront.current.material.uniforms.time.value = state.clock.elapsedTime
-    refBack.current.material.uniforms.time.value = state.clock.elapsedTime
+    const time = state.clock.elapsedTime
+    refFront.current.material.uniforms.time.value = time
+    refBack.current.material.uniforms.time.value = time
+    refLigh.current.position.x = Math.sin(time * Math.PI) * 0.25;
+    refLigh.current.position.z = Math.cos(time * Math.PI * 0.75) * 0.25;
+    refLigh.current.position.y = HEIGHT * 2 + 1 + Math.cos(time * Math.PI * 0.75) * 0.1;
   })
 
   const frontData = useMemo(
@@ -211,21 +218,33 @@ function Candle() {
   )
 
   const SEGMENTS = 360
-  const HEIGHT = 5
 
   const [points2d, setPoints2d] = useState(makePoints2d(HEIGHT, SEGMENTS))
 
   return (
+    <>
+    <directionalLight
+        ref={refLigh}
+        position={[0, HEIGHT * 2 + 1, 0]}
+        castShadow
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-far={50}
+        shadow-camera-left={-10}
+        shadow-camera-right={10}
+        shadow-camera-top={10}
+        shadow-camera-bottom={-10}
+      />
     <group
-      position={[0, -4.5, 0]}
+      position={[0, -HEIGHT, 0]}
       onDoubleClick={() => setPoints2d(makePoints2d(HEIGHT, SEGMENTS))}
     >
       <mesh ref={refFront} position={[0, HEIGHT * 2 + 0.1, 0]}>
-        <sphereBufferGeometry args={[0.2, 32, 30]} />
+        <sphereBufferGeometry args={[0.25, 32, 30]} />
         <shaderMaterial {...frontData} />
       </mesh>
       <mesh ref={refBack} position={[0, HEIGHT * 2 + 0.1, 0]}>
-        <sphereBufferGeometry args={[0.2, 32, 30]} />
+        <sphereBufferGeometry args={[0.25, 32, 30]} />
         <shaderMaterial {...backData} />
       </mesh>
       <mesh castShadow receiveShadow>
@@ -253,6 +272,7 @@ function Candle() {
         <meshPhongMaterial color={'white'} />
       </mesh>
     </group>
+    </>
   )
 }
 
@@ -260,21 +280,10 @@ function App() {
   return (
     <Canvas
       shadows={true}
-      camera={{ position: [0, 0, -24], fov: 30 }}
+      camera={{ position: [0, 0, -26], fov: 30 }}
     >
       <OrbitControls autoRotate={false} autoRotateSpeed={-10} />
       <ambientLight />
-      <directionalLight
-        position={[10, 10, 10]}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
-        shadow-camera-far={50}
-        shadow-camera-left={-10}
-        shadow-camera-right={10}
-        shadow-camera-top={10}
-        shadow-camera-bottom={-10}
-      />
       <pointLight position={[-10, 0, -20]} color="red" intensity={2.5} />
       <pointLight position={[0, -10, 0]} intensity={1.5} />
       <Candle />
