@@ -9,73 +9,9 @@ import {
 } from '@react-three/fiber'
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { render } from 'react-dom'
-import { Sphere, Vector2, MultiplyBlending, FrontSide, BackSide } from 'three'
+import { Vector2, MultiplyBlending, FrontSide, BackSide } from 'three'
 
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass'
-import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass'
-//@ts-ignore
-import { ReflectorForSSRPass } from 'three/examples/jsm/objects/ReflectorForSSRPass'
-
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader'
-
-extend({ EffectComposer, ShaderPass, RenderPass, UnrealBloomPass, SSRPass })
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      sSRPass: ReactThreeFiber.Object3DNode<SSRPass, typeof SSRPass>
-    }
-  }
-}
-
-function Effects({ selects, reflectorGeometry }) {
-  console.log(reflectorGeometry)
-
-  let groundReflector = null
-
-  if (reflectorGeometry !== undefined) {
-    groundReflector = new ReflectorForSSRPass(reflectorGeometry, {
-      clipBias: 0.0003,
-      textureWidth: window.innerWidth,
-      textureHeight: window.innerHeight,
-      color: 0x888888,
-      useDepthTexture: true,
-    })
-    groundReflector.material.depthWrite = false
-    groundReflector.rotation.x = -Math.PI / 2
-    groundReflector.visible = false
-  }
-
-  const composer = useRef()
-  const { scene, gl, size, camera } = useThree()
-  useEffect(() => composer.current.setSize(size.width, size.height), [size])
-  useFrame(() => composer.current.render(), 2)
-  return (
-    <effectComposer ref={composer} args={[gl]}>
-      <renderPass attachArray="passes" scene={scene} camera={camera} />
-      <sSRPass
-        attachArray="passes"
-        thickness={0.018}
-        args={[
-          {
-            scene,
-            camera,
-            renderer: gl,
-            width: size.width,
-            height: size.height,
-            selects,
-            groundReflector,
-          },
-        ]}
-        maxDistance={0.03}
-        renderToScreen
-      />
-    </effectComposer>
-  )
-}
+declare var fxrand: () => number
 
 const vertexShader = `
         uniform float time;
@@ -154,10 +90,9 @@ const fragmentShader = `
 
 function profile(SEGMENTS: number) {
   const step = 360 / SEGMENTS
-  const K1 = Math.random() * 3 + 1
-  const K2 = Math.random() + 0.1
-  const K3 = (Math.random() * 15 + 5) * 0.1
-  const K4 = Math.random() * 30 + 3
+  const K1 = fxrand() * 3 + 1
+  const K2 = fxrand() + 0.1
+  const K3 = (fxrand() * 15 + 5) * 0.1
 
   const f1 = (k: number, i: number) =>
     (Math.sin((k * (i * step) * Math.PI) / 180) + 1) / 2
