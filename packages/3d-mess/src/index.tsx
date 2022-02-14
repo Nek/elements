@@ -88,11 +88,11 @@ const fragmentShader = `
         }
       `
 
-function profile(SEGMENTS: number) {
+function profile(SEGMENTS: number, PRNG: () => number) {
   const step = 360 / SEGMENTS
-  const K1 = fxrand() * 3 + 1
-  const K2 = fxrand() + 0.1
-  const K3 = (fxrand() * 15 + 5) * 0.1
+  const K1 = PRNG() * 3 + 1
+  const K2 = PRNG() + 0.1
+  const K3 = (PRNG() * 15 + 5) * 0.1
 
   const f1 = (k: number, i: number) =>
     (Math.sin((k * (i * step) * Math.PI) / 180) + 1) / 2
@@ -102,17 +102,17 @@ function profile(SEGMENTS: number) {
     .map((_, i) => f1(K1, i) * f1(K2, i) + f1(K3, i) + 0.2)
 }
 
-function makePoints2d(HEIGHT: number, SEGMENTS: number) {
+function makePoints2d(HEIGHT: number, SEGMENTS: number, PRNG: () => number) {
   return [
     new Vector2(0, 0),
-    ...profile(SEGMENTS).map((x, y) => new Vector2(x, (y * HEIGHT) / SEGMENTS)),
+    ...profile(SEGMENTS, PRNG).map((x, y) => new Vector2(x, (y * HEIGHT) / SEGMENTS)),
     new Vector2(0, HEIGHT),
   ]
 }
 
-  const HEIGHT = 5
-
 function Candle() {
+  const [HEIGHT, setHEIGHT] = useState(fxrand() * 3 + 2.5)
+
   const refFront = useRef()
   const refBack = useRef()
   const refLigh = useRef()
@@ -121,9 +121,10 @@ function Candle() {
     const time = state.clock.elapsedTime
     refFront.current.material.uniforms.time.value = time
     refBack.current.material.uniforms.time.value = time
-    refLigh.current.position.x = Math.sin(time * Math.PI) * 0.25;
-    refLigh.current.position.z = Math.cos(time * Math.PI * 0.75) * 0.25;
-    refLigh.current.position.y = HEIGHT * 2 + 1 + Math.cos(time * Math.PI * 0.75) * 0.1;
+    refLigh.current.position.x = Math.sin(time * Math.PI) * 0.25
+    refLigh.current.position.z = Math.cos(time * Math.PI * 0.75) * 0.25
+    refLigh.current.position.y =
+      HEIGHT * 2 + 1 + Math.cos(time * Math.PI * 0.75) * 0.1
   })
 
   const frontData = useMemo(
@@ -154,11 +155,16 @@ function Candle() {
 
   const SEGMENTS = 360
 
-  const [points2d, setPoints2d] = useState(makePoints2d(HEIGHT, SEGMENTS))
+  const [points2d, setPoints2d] = useState(makePoints2d(HEIGHT, SEGMENTS, fxrand))
+  const [pos, setPos] = useState(points2d[points2d.length - 2].x)
+
+  useEffect(() => {
+    setPos(points2d[points2d.length - 2].x)
+  }, [points2d[points2d.length - 2].x])
 
   return (
     <>
-    <directionalLight
+      <directionalLight
         ref={refLigh}
         position={[0, HEIGHT * 2 + 1, 0]}
         castShadow
@@ -170,53 +176,54 @@ function Candle() {
         shadow-camera-top={10}
         shadow-camera-bottom={-10}
       />
-    <group
-      position={[0, -HEIGHT, 0]}
-      onDoubleClick={() => setPoints2d(makePoints2d(HEIGHT, SEGMENTS))}
-    >
-      <mesh ref={refFront} position={[0, HEIGHT * 2 + 0.1, 0]}>
-        <sphereBufferGeometry args={[0.25, 32, 30]} />
-        <shaderMaterial {...frontData} />
-      </mesh>
-      <mesh ref={refBack} position={[0, HEIGHT * 2 + 0.1, 0]}>
-        <sphereBufferGeometry args={[0.25, 32, 30]} />
-        <shaderMaterial {...backData} />
-      </mesh>
-      <mesh castShadow receiveShadow>
-        <latheGeometry args={[points2d, 72]} />
-        <meshPhongMaterial color={'hotpink'} />
-      </mesh>
-      <mesh
-        castShadow
-        receiveShadow
-        position={[0, 0, 0]}
-        rotation={[Math.PI + Math.PI / 2, 0, 0]}
+      <group
+        position={[0, -HEIGHT, 0]}
+        onDoubleClick={() => {
+          const HEIGHT = fxrand() * 3 + 2.5
+          setHEIGHT(HEIGHT)
+          setPoints2d(makePoints2d(HEIGHT, SEGMENTS, fxrand))
+        }}
       >
-        <planeGeometry args={[25, 25, 10, 10]} />
-        <shadowMaterial color={'white'} />
-      </mesh>
-      <mesh position={[0, HEIGHT + HEIGHT / 2, 0]}>
-        <cylinderGeometry
-          args={[
-            points2d[points2d.length - 2].x * 0.5,
-            points2d[points2d.length - 2].x * 0.7,
-            HEIGHT,
-            36,
-          ]}
-        />
-        <meshPhongMaterial color={'white'} />
-      </mesh>
-    </group>
+        <mesh ref={refFront} position={[0, HEIGHT * 2 + 0.1, 0]}>
+          <sphereBufferGeometry args={[0.25, 32, 30]} />
+          <shaderMaterial {...frontData} />
+        </mesh>
+        <mesh ref={refBack} position={[0, HEIGHT * 2 + 0.1, 0]}>
+          <sphereBufferGeometry args={[0.25, 32, 30]} />
+          <shaderMaterial {...backData} />
+        </mesh>
+        <mesh castShadow receiveShadow>
+          <latheGeometry args={[points2d, 72]} />
+          <meshPhongMaterial color={'hotpink'} />
+        </mesh>
+        <mesh
+          castShadow
+          receiveShadow
+          position={[0, 0, 0]}
+          rotation={[Math.PI + Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[25, 25, 10, 10]} />
+          <shadowMaterial color={'white'} />
+        </mesh>
+        <mesh position={[0, HEIGHT + HEIGHT / 2, 0]}>
+          <cylinderGeometry
+            args={[
+              pos * 0.5,
+              pos * 0.7,
+              HEIGHT,
+              36,
+            ]}
+          />
+          <meshPhongMaterial color={'white'} />
+        </mesh>
+      </group>
     </>
   )
 }
 
 function App() {
   return (
-    <Canvas
-      shadows={true}
-      camera={{ position: [0, 0, -26], fov: 30 }}
-    >
+    <Canvas shadows={true} camera={{ position: [0, 0, -26], fov: 30 }}>
       <OrbitControls autoRotate={false} autoRotateSpeed={-10} />
       <ambientLight />
       <pointLight position={[-10, 0, -20]} color="red" intensity={2.5} />
