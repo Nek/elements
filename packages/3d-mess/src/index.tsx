@@ -85,7 +85,7 @@ function Tree(props) {
         <MeshDistortMaterial
           distort={0.2}
           radius={points2d[1].x}
-          speed={2}
+          speed={50}
           color={'green'}
         />
       </Sphere>
@@ -138,11 +138,12 @@ function App() {
           state.trees.map(({ HEIGHT, ks: { K1, K2, K3 } }) =>
             el.mul(
               HEIGHT / state.HEIGHT,
+              el.add(0.4, el.mul(0.6, el.div(el.add(el.cycle(HEIGHT / 10), 1), 2))),
               el.div(
                 el.add(
-                  el.cycle(55 * K1),
-                  el.cycle(55 * K2),
-                  el.cycle(55 * K3),
+                  el.cycle(125 * K1),
+                  el.cycle(125 * K2),
+                  el.cycle(125 * K3),
                 ),
                 3,
               ),

@@ -9,8 +9,11 @@ declare global {
   }
 }
 
-const initAudioCore = () => {
+const initAudioCore = async () => {
   const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  if (ctx.state === "suspended") {
+      await ctx.resume()
+    }
   async function main() {
     let node = await core.initialize(ctx, {
       numberOfInputs: 0,
