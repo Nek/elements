@@ -1,5 +1,6 @@
 // @ts-ignore
 import { el, ElementaryWebAudioRenderer as core } from '@elemaudio/core'
+import { useEffect, useState } from 'react'
 
 declare global {
   interface Window {
@@ -23,7 +24,15 @@ const initAudioCore = () => {
   document.removeEventListener('touchstart', initAudioCore)
 }
 
-export function registerAudio() {
-  document.addEventListener('click', initAudioCore)
-  document.addEventListener('touchstart', initAudioCore)
+export function useRegisterAudioCore() {
+  useEffect(() => {
+    document.addEventListener('click', initAudioCore)
+    document.addEventListener('touchstart', initAudioCore)
+  }, [])
+  const [coreLoaded, setCoreLoaded] = useState(false)
+  useEffect(() => {
+    core.on('load', () => setCoreLoaded(true))
+  }, [])
+
+  return [coreLoaded, core]
 }

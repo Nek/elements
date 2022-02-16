@@ -19,7 +19,8 @@ import {
 import React, { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { render } from 'react-dom'
 import { MeshPhongMaterial, Vector2 } from 'three'
-import { registerAudio } from './audio'
+import { useRegisterAudioCore } from './audio'
+import { el } from '@elemaudio/core'
 
 declare var fxrand: () => number
 
@@ -29,12 +30,12 @@ import vertexShader from './vertex.glsl'
 function makeKs(PRNG) {
   return {
     K1: PRNG() * 3 + 1,
-  K2: PRNG() + 0.1,
-  K3: (PRNG() * 15 + 5) * 0.1,
+    K2: PRNG() + 0.1,
+    K3: (PRNG() * 15 + 5) * 0.1,
   }
 }
 
-function profile(SEGMENTS: number, {K1, K2, K3}) {
+function profile(SEGMENTS: number, { K1, K2, K3 }) {
   const step = 360 / SEGMENTS
 
   const f1 = (k: number, i: number) =>
@@ -48,13 +49,15 @@ function profile(SEGMENTS: number, {K1, K2, K3}) {
     )
 }
 
-function makePoints2d(HEIGHT: number, SEGMENTS: number, ks: {K1: number, K2: number, K3: number}) {
+function makePoints2d(
+  HEIGHT: number,
+  SEGMENTS: number,
+  ks: { K1: number; K2: number; K3: number },
+) {
   const profile2d = profile(SEGMENTS, ks)
   return [
     new Vector2(0, 0),
-    ...profile2d.map(
-      (x, y) => new Vector2(x, (y * HEIGHT) / SEGMENTS),
-    ),
+    ...profile2d.map((x, y) => new Vector2(x, (y * HEIGHT) / SEGMENTS)),
     new Vector2(0, HEIGHT),
   ]
 }
@@ -97,7 +100,7 @@ function Tree(props) {
 softShadows()
 
 function makeState() {
-  const N = Math.ceil(fxrand() * 5)
+  const N = Math.ceil(fxrand() * 4) + 2
   const heights = calcHeights(N)
   const R = N - 1
   const trees = heights.map((HEIGHT, i, a) => {
@@ -112,6 +115,7 @@ function makeState() {
       HEIGHT,
       points2d,
       rad: points2d[1].x * (1 + fxrand() * 2),
+      ks,
     }
   })
   return {
@@ -125,8 +129,31 @@ function makeState() {
 
 function App() {
   const [state, setState] = useState(makeState())
+  const [coreLoaded, core] = useRegisterAudioCore()
 
-  useEffect(() => registerAudio(), [])
+  useEffect(() => {
+    if (coreLoaded) {
+      const audio = el.div(
+        el.add(
+          state.trees.map(({ HEIGHT, ks: { K1, K2, K3 } }) =>
+            el.mul(
+              HEIGHT / state.HEIGHT,
+              el.div(
+                el.add(
+                  el.cycle(55 * K1),
+                  el.cycle(55 * K2),
+                  el.cycle(55 * K3),
+                ),
+                3,
+              ),
+            ),
+          ),
+        ),
+        state.trees.length,
+      )
+      core.render(audio, audio)
+    }
+  }, [coreLoaded, state])
 
   return (
     <Canvas shadows={true} camera={{ position: [0, 0, -34], fov: 30 }}>
@@ -152,12 +179,7 @@ function App() {
         <pointLight position={[-10, 0, -20]} color="red" intensity={2.5} />
         <pointLight position={[0, -10, 0]} intensity={1.5} />
         {state.trees.map((props, i, a) => {
-          return (
-            <Tree
-              key={`tree-${i}`}
-              {...props}
-            />
-          )
+          return <Tree key={`tree-${i}`} {...props} />
         })}
         <mesh
           castShadow
