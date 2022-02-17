@@ -30,6 +30,7 @@ import {
   LatheGeometry,
   MeshPhongMaterial,
   Vector2,
+  Vector3,
 } from 'three'
 import { useRegisterAudioCore } from './audio'
 import { el } from '@elemaudio/core'
@@ -91,12 +92,18 @@ function calcHeights(n) {
 
 const SEGMENTS = 360
 
-function morph(v1,v2,k) {
+function interpolate(v1, v2, k) {
   return v1 * (1 - k) + v2 * k
 }
 
+const geo = new LatheGeometry(Array(SEGMENTS).fill(new Vector2(0, 0)), 72)
+const initialAttrs = {
+  position: [geo.attributes.position.clone()],
+  normal: [geo.attributes.normal.clone()],
+}
+
 function Tree({ states, morphTargetInfluences }) {
-  const [attrs, setAttrs] = useState({ position: [], normal: [] })
+  const [attrs, setAttrs] = useState(initialAttrs)
 
   useEffect(() => {
     const geo = new LatheGeometry(states[1].points2d, 72)
@@ -104,14 +111,17 @@ function Tree({ states, morphTargetInfluences }) {
       position: [geo.attributes.position.clone()],
       normal: [geo.attributes.normal.clone()],
     })
-  }, [states[1].points2d])
+  }, [states])
 
   const k = morphTargetInfluences[0]
-  const HEIGHT = morph(states[0].HEIGHT, states[1].HEIGHT, k)
-  const rad = morph(states[0].rad, states[1].rad, k)
-const rad2 = morph(states[0].points2d[1].x, states[1].points2d[1].x, k)
+  const HEIGHT = interpolate(states[0].HEIGHT, states[1].HEIGHT, k)
+  const rad = interpolate(states[0].rad, states[1].rad, k)
+  const rad2 = interpolate(states[0].points2d[1].x, states[1].points2d[1].x, k)
+  const pos = new Vector3(interpolate(states[0].position[0], states[1].position[0], k),
+      interpolate(states[0].position[1], states[1].position[1], k),
+      interpolate(states[0].position[2], states[1].position[2], k))
   return (
-    <group {...states[0]}>
+    <group position={pos}>
       <Sphere
         position={[0, HEIGHT, 0]}
         args={[rad, 36, 36]}
@@ -143,7 +153,7 @@ const rad2 = morph(states[0].points2d[1].x, states[1].points2d[1].x, k)
 softShadows()
 
 function makeTrees(heights, R) {
-  return heights.map((HEIGHT, i, a) => {
+  return heights.map((HEIGHT: number, i: number, a: []) => {
     const ks = makeKs(fxrand)
     const points2d = makePoints2d(HEIGHT, SEGMENTS, ks)
     return {
@@ -160,27 +170,28 @@ function makeTrees(heights, R) {
   })
 }
 
-function makeState() {
-  const N = Math.ceil(fxrand() * 4) + 2
+function makeState(N) {
   const heights1 = calcHeights(N)
   const heights2 = calcHeights(N)
-  const HEIGHT = Math.max.apply(null, [...heights1, ...heights2])
-  const heights = _zip(heights1, heights2) 
+  const HEIGHT1 = Math.max.apply(null, heights1)
+  const HEIGHT2 = Math.max.apply(null, heights2)
+  const heights = _zip(heights1, heights2)
   const R = N - 1
   const trees = [makeTrees(heights1, R), makeTrees(heights2, R)]
   return {
     N,
     heights,
-    HEIGHT,
+    HEIGHT1,
+    HEIGHT2,
     R,
     trees,
-    zipTrees: _zip.apply(null, trees)
+    zipTrees: _zip.apply(null, trees),
   }
 }
 
 const FREQS = [432 / 8, 432 / 4, 432 / 2]
 
-const initialState = makeState()
+const initialState = makeState(Math.ceil(fxrand() * 4) + 2)
 
 function Forest() {
   const [state, setState] = useState(initialState)
@@ -193,12 +204,11 @@ function Forest() {
 
   useEffect(() => {
     if (coreLoaded) {
-
       const state0 = el.div(
         el.add(
           state.trees[0].map(({ HEIGHT, ks: { K1, K2, K3 } }) =>
             el.mul(
-              HEIGHT / state.HEIGHT,
+              HEIGHT / state.HEIGHT1,
               el.add(
                 0.1,
                 el.mul(
@@ -224,7 +234,7 @@ function Forest() {
         el.add(
           state.trees[1].map(({ HEIGHT, ks: { K1, K2, K3 } }) =>
             el.mul(
-              HEIGHT / state.HEIGHT,
+              HEIGHT / state.HEIGHT2,
               el.add(
                 0.1,
                 el.mul(
@@ -246,21 +256,23 @@ function Forest() {
         ),
         state.trees[1].length,
       )
-      const audio = el.add(el.mul(state0, el.sub(1, morph)), el.mul(state1, morph))
+      const audio = el.add(
+        el.mul(state0, el.sub(1, morph)),
+        el.mul(state1, morph),
+      )
       core.render(audio, audio)
     }
   }, [coreLoaded, state, morph])
 
+  const HEIGHT = Math.max(state.HEIGHT1, state.HEIGHT2)
+
   return (
     <group
-      onDoubleClick={() => {
-        setState(makeState())
-      }}
-      position={[0, -state.HEIGHT / 2, 0]}
+      position={[0, -HEIGHT / 2, 0]}
     >
       <ambientLight />
       <directionalLight
-        position={[12, state.HEIGHT * 2, 0]}
+        position={[12, HEIGHT * 2, 0]}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
