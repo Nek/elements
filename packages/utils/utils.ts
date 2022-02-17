@@ -18,8 +18,6 @@ export function shuffle(array: any[]) {
   return array
 }
 
-console.log("!!!!@")
-
 export function partition(array: any[], chunkSize: number) {
   return Array(Math.ceil(array.length / chunkSize))
     .fill(undefined)
