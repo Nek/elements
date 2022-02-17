@@ -159,7 +159,7 @@ function App() {
   }, [coreLoaded, state])
 
   return (
-    <Canvas shadows={true} camera={{ position: [0, 0, -34], fov: 30 }}>
+    <Canvas shadows={true} camera={{ position: [0, 0, -38], fov: 30 }}>
       <OrbitControls autoRotate={true} autoRotateSpeed={-1} />
       <group
         onDoubleClick={() => {
