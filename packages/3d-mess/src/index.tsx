@@ -199,7 +199,7 @@ function Forest() {
   const [morph, setMorph] = useState(0)
 
   useFrame((state) => {
-    setMorph((Math.sin(state.clock.elapsedTime) + 1) / 2)
+    setMorph((Math.sin(state.clock.elapsedTime / 1.5) + 1) / 2)
   })
 
   useEffect(() => {
