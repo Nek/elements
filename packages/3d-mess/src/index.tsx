@@ -127,23 +127,25 @@ function makeState() {
   }
 }
 
+const FREQS = [432/8 ,
+432/4 ,
+432/2 ,]
+
 function App() {
   const [state, setState] = useState(makeState())
   const [coreLoaded, core] = useRegisterAudioCore()
 
   useEffect(() => {
-    if (coreLoaded) {
+    if (coreLoaded) { 
       const audio = el.div(
         el.add(
           state.trees.map(({ HEIGHT, ks: { K1, K2, K3 } }) =>
             el.mul(
               HEIGHT / state.HEIGHT,
-              el.add(0.4, el.mul(0.6, el.div(el.add(el.cycle(HEIGHT / 10), 1), 2))),
+              el.add(0.1, el.mul(0.9, el.div(el.add(el.cycle(HEIGHT / state.trees.length), 1), 2))),
               el.div(
                 el.add(
-                  el.cycle(125 * K1),
-                  el.cycle(125 * K2),
-                  el.cycle(125 * K3),
+                  [K1,K2,K3].sort().map((v, i) => el.cycle(FREQS[i] / v))
                 ),
                 3,
               ),
